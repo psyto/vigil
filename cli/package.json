@@ -1,0 +1,23 @@
+{
+  "name": "vigil-cli",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "create-yield-market": "tsx create-yield-market.ts",
+    "create-uptime-market": "tsx create-uptime-market.ts",
+    "init-lp": "tsx init-lp.ts",
+    "trade": "tsx trade.ts",
+    "list-markets": "tsx list-markets.ts"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.98.0",
+    "bn.js": "^5.2.1",
+    "vigil-sdk": "file:../sdk"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.6",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

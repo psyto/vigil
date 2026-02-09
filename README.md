@@ -14,7 +14,8 @@ vigil/
 │   └── ncn-uptime-matcher/      # Native — Percolator matcher for uptime perps
 ├── keeper/                      # Off-chain data feeds and signal detection
 ├── cli/                         # Market creation, LP init, trading
-└── sdk/                         # TypeScript client library
+├── sdk/                         # TypeScript client library
+└── demo/                        # Interactive browser-based pricing simulator
 ```
 
 ### Programs
@@ -44,6 +45,14 @@ vigil/
 | `trade` | Long/short yield or uptime via matcher |
 | `list-markets` | Show active restaking risk markets |
 
+### SDK
+
+TypeScript client library for interacting with Vigil programs. Provides account deserialization, instruction builders, PDA derivation, and pricing simulation for both yield and uptime matchers.
+
+### Demo
+
+Interactive browser-based simulator that lets you adjust uptime, yield, regime, and signal severity to see pricing respond in real-time. Pricing engine is an exact BigInt port from the on-chain Rust programs. No blockchain connection required.
+
 ## Build
 
 ```bash
@@ -54,33 +63,61 @@ cargo build-sbf
 cargo test
 ```
 
+## Setup
+
+Each component has its own `package.json`. Install dependencies per component:
+
+```bash
+# SDK (required by CLI)
+cd sdk && npm install
+
+# CLI
+cd cli && npm install
+
+# Keeper
+cd keeper && npm install
+
+# Demo
+cd demo && npm install
+```
+
 ## Keeper
 
 ```bash
-npm install
+# Run unified pipeline (all services wired together)
+cd keeper && npm start
 
-# Run individual keepers
-npm run keeper:monitor
-npm run keeper:yield-sync
-npm run keeper:uptime-sync
-npm run keeper:signal
+# Or run individual services
+cd keeper && npm run monitor
+cd keeper && npm run yield-sync
+cd keeper && npm run uptime-sync
+cd keeper && npm run signals
 ```
 
 ## CLI
 
 ```bash
+cd cli
+
 # Create markets
-npm run cli:create-yield-market -- --ncn <NCN_PUBKEY> --name "Pyth Oracle NCN"
-npm run cli:create-uptime-market -- --ncn <NCN_PUBKEY> --name "Wormhole Bridge NCN"
+npm run create-yield-market -- --ncn <NCN_PUBKEY> --name "Pyth Oracle NCN"
+npm run create-uptime-market -- --ncn <NCN_PUBKEY> --name "Wormhole Bridge NCN"
 
 # Initialize LP
-npm run cli:init-lp -- --type yield --ncn <NCN_PUBKEY>
+npm run init-lp -- --type yield --ncn <NCN_PUBKEY>
 
 # Trade
-npm run cli:trade -- --type yield --context <CONTEXT_PUBKEY> --side long
+npm run trade -- --type yield --context <CONTEXT_PUBKEY> --side long
 
 # List markets
-npm run cli:list-markets -- --contexts <ADDR1,ADDR2>
+npm run list-markets -- --contexts <ADDR1,ADDR2>
+```
+
+## Demo
+
+```bash
+cd demo && npm run dev
+# Open http://localhost:3000
 ```
 
 ## Dependencies
