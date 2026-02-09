@@ -1,7 +1,7 @@
 /**
  * Create a restaking yield perp market on Percolator
  *
- * Usage: npx ts-node cli/create-yield-market.ts --ncn <NCN_ADDRESS> --name <NCN_NAME>
+ * Usage: npm run create-yield-market -- --ncn <NCN_ADDRESS> --name <NCN_NAME>
  */
 
 import {
@@ -25,7 +25,7 @@ async function main() {
 
   if (ncnIdx === -1 || nameIdx === -1) {
     console.log(
-      "Usage: npx ts-node cli/create-yield-market.ts --ncn <NCN_ADDRESS> --name <NCN_NAME>"
+      "Usage: npm run create-yield-market -- --ncn <NCN_ADDRESS> --name <NCN_NAME>"
     );
     console.log("");
     console.log("Options:");

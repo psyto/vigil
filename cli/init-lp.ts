@@ -1,7 +1,7 @@
 /**
  * Initialize LP with matcher — creates context account and initializes it
  *
- * Usage: npx ts-node cli/init-lp.ts --type <yield|uptime> --ncn <NCN_ADDRESS>
+ * Usage: npm run init-lp -- --type <yield|uptime> --ncn <NCN_ADDRESS>
  */
 
 import {
@@ -26,7 +26,7 @@ async function main() {
 
   if (typeIdx === -1) {
     console.log(
-      "Usage: npx ts-node cli/init-lp.ts --type <yield|uptime> [options]"
+      "Usage: npm run init-lp -- --type <yield|uptime> [options]"
     );
     console.log("");
     console.log("Options:");

@@ -1,7 +1,7 @@
 /**
  * Trade — Long/short yield or uptime via matcher
  *
- * Usage: npx ts-node cli/trade.ts --type <yield|uptime> --context <CONTEXT_PUBKEY> --side <long|short>
+ * Usage: npm run trade -- --type <yield|uptime> --context <CONTEXT_PUBKEY> --side <long|short>
  */
 
 import {
@@ -38,7 +38,7 @@ async function main() {
 
   if (typeIdx === -1 || ctxIdx === -1 || sideIdx === -1) {
     console.log(
-      "Usage: npx ts-node cli/trade.ts --type <yield|uptime> --context <CONTEXT_PUBKEY> --side <long|short>"
+      "Usage: npm run trade -- --type <yield|uptime> --context <CONTEXT_PUBKEY> --side <long|short>"
     );
     process.exit(1);
   }

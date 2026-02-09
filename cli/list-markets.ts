@@ -1,7 +1,7 @@
 /**
  * List active restaking risk markets with current data
  *
- * Usage: npx ts-node cli/list-markets.ts [--contexts <context1,context2,...>]
+ * Usage: npm run list-markets -- [--contexts <context1,context2,...>]
  */
 
 import {
@@ -90,7 +90,7 @@ async function main() {
       .map((a) => new PublicKey(a.trim()));
   } else {
     console.log(
-      "Usage: npx ts-node cli/list-markets.ts --contexts <addr1,addr2,...>"
+      "Usage: npm run list-markets -- --contexts <addr1,addr2,...>"
     );
     console.log("");
     console.log(
