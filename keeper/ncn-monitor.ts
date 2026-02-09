@@ -246,6 +246,9 @@ async function main() {
   await runMonitor(connection, authority, DEFAULT_NCNS, intervalMs);
 }
 
-main().catch(console.error);
+export { MockNcnDataSource, NcnConfig, runMonitor, DEFAULT_NCNS, main as runMonitorMain };
 
-export { MockNcnDataSource, NcnConfig, runMonitor, DEFAULT_NCNS };
+// Run when executed directly
+if (process.argv[1]?.replace(/\.(js|ts)$/, '').endsWith('ncn-monitor')) {
+  main().catch(console.error);
+}

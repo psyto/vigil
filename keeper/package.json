@@ -1,0 +1,23 @@
+{
+  "name": "vigil-keeper",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx index.ts",
+    "monitor": "tsx ncn-monitor.ts",
+    "signals": "tsx signal-detector.ts",
+    "uptime-sync": "tsx uptime-sync.ts",
+    "yield-sync": "tsx yield-sync.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/web3.js": "^1.98.0",
+    "bn.js": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.6",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

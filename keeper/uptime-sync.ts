@@ -188,14 +188,18 @@ async function main() {
   );
 }
 
-main().catch(console.error);
-
 export {
   buildUptimeSyncIx,
   runUptimeSync,
+  UptimeData,
   SIGNAL_NONE,
   SIGNAL_LOW,
   SIGNAL_HIGH,
   SIGNAL_CRITICAL,
   SIGNAL_SPREAD_MAP,
 };
+
+// Run when executed directly
+if (process.argv[1]?.replace(/\.(js|ts)$/, '').endsWith('uptime-sync')) {
+  main().catch(console.error);
+}

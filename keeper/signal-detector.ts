@@ -339,4 +339,9 @@ async function main() {
   setInterval(simulate, 10_000);
 }
 
-main().catch(console.error);
+export { NcnSnapshot, DetectorConfig };
+
+// Run when executed directly
+if (process.argv[1]?.replace(/\.(js|ts)$/, '').endsWith('signal-detector')) {
+  main().catch(console.error);
+}

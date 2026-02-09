@@ -261,8 +261,6 @@ async function main() {
   );
 }
 
-main().catch(console.error);
-
 export {
   MockYieldSource,
   YieldSnapshot,
@@ -270,3 +268,8 @@ export {
   buildOracleSyncIx,
   runYieldSync,
 };
+
+// Run when executed directly
+if (process.argv[1]?.replace(/\.(js|ts)$/, '').endsWith('yield-sync')) {
+  main().catch(console.error);
+}
