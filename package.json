@@ -1,0 +1,31 @@
+{
+  "name": "vigil",
+  "version": "0.1.0",
+  "description": "Vigil — pricing and hedging restaking risk on Solana",
+  "private": true,
+  "scripts": {
+    "build": "cargo build-sbf",
+    "test": "cargo test",
+    "keeper:monitor": "npx ts-node keeper/ncn-monitor.ts",
+    "keeper:yield-sync": "npx ts-node keeper/yield-sync.ts",
+    "keeper:uptime-sync": "npx ts-node keeper/uptime-sync.ts",
+    "keeper:signal": "npx ts-node keeper/signal-detector.ts",
+    "cli:create-yield-market": "npx ts-node cli/create-yield-market.ts",
+    "cli:create-uptime-market": "npx ts-node cli/create-uptime-market.ts",
+    "cli:init-lp": "npx ts-node cli/init-lp.ts",
+    "cli:trade": "npx ts-node cli/trade.ts",
+    "cli:list-markets": "npx ts-node cli/list-markets.ts"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/web3.js": "^1.95.0",
+    "bn.js": "^5.2.1",
+    "bs58": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.5",
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.0"
+  }
+}
