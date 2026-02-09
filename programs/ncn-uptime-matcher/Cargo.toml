@@ -1,6 +1,7 @@
 [package]
 name = "ncn-uptime-matcher"
 version = "0.1.0"
+description = "Percolator matcher for NCN uptime perpetuals on Solana"
 edition = "2021"
 
 [lib]

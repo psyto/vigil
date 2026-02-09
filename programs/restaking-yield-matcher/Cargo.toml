@@ -1,6 +1,7 @@
 [package]
 name = "restaking-yield-matcher"
 version = "0.1.0"
+description = "Percolator matcher for restaking yield perpetuals on Solana"
 edition = "2021"
 
 [lib]

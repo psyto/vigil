@@ -81,6 +81,22 @@ cd keeper && npm install
 cd demo && npm install
 ```
 
+### Environment Variables
+
+Copy `.env.example` to `.env` and configure as needed:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RPC_URL` | `https://api.devnet.solana.com` | Solana RPC endpoint |
+| `AUTHORITY_KEYPAIR` | _(generated)_ | JSON array of secret key bytes |
+| `MONITOR_INTERVAL_MS` | `5000` | Keeper: NCN monitor polling interval |
+| `SYNC_INTERVAL_MS` | `5000` | Keeper: yield/uptime sync interval |
+| `POLL_INTERVAL_MS` | `30000` | Keeper: signal detector polling interval |
+
 ## Keeper
 
 ```bash
