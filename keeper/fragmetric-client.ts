@@ -10,6 +10,7 @@
  */
 
 import { PublicKey } from "@solana/web3.js";
+import { withRetry } from "./retry";
 
 export interface NcnPerformanceSample {
   uptimeE6: number;
@@ -60,23 +61,30 @@ export class FragmetricClient {
         headers["X-API-Key"] = this.config.apiKey;
       }
 
-      const controller = new AbortController();
-      const timeout = setTimeout(
-        () => controller.abort(),
-        this.config.timeoutMs,
+      const data = await withRetry(
+        async () => {
+          const controller = new AbortController();
+          const timeout = setTimeout(
+            () => controller.abort(),
+            this.config.timeoutMs,
+          );
+          try {
+            const response = await fetch(url, {
+              headers,
+              signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            if (!response.ok) {
+              throw new Error(`Fragmetric API error: ${response.status} ${response.statusText}`);
+            }
+            return await response.json();
+          } catch (err) {
+            clearTimeout(timeout);
+            throw err;
+          }
+        },
+        { onRetry: (err, attempt, delay) => console.warn(`[FRAGMETRIC] retry ${attempt} in ${delay}ms: ${err}`) },
       );
-
-      const response = await fetch(url, {
-        headers,
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        throw new Error(`Fragmetric API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
 
       const sample: NcnPerformanceSample = {
         // Fragmetric returns uptime as a decimal (0.0 - 1.0)

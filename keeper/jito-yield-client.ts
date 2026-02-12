@@ -10,6 +10,7 @@
  */
 
 import { PublicKey } from "@solana/web3.js";
+import { withRetry } from "./retry";
 
 export interface YieldSnapshot {
   currentApyBps: number;
@@ -65,23 +66,30 @@ export class JitoYieldClient {
         headers["Authorization"] = `Bearer ${this.config.apiKey}`;
       }
 
-      const controller = new AbortController();
-      const timeout = setTimeout(
-        () => controller.abort(),
-        this.config.timeoutMs,
+      const data = await withRetry(
+        async () => {
+          const controller = new AbortController();
+          const timeout = setTimeout(
+            () => controller.abort(),
+            this.config.timeoutMs,
+          );
+          try {
+            const response = await fetch(url, {
+              headers,
+              signal: controller.signal,
+            });
+            clearTimeout(timeout);
+            if (!response.ok) {
+              throw new Error(`Jito API error: ${response.status} ${response.statusText}`);
+            }
+            return await response.json();
+          } catch (err) {
+            clearTimeout(timeout);
+            throw err;
+          }
+        },
+        { onRetry: (err, attempt, delay) => console.warn(`[JITO-YIELD] retry ${attempt} in ${delay}ms: ${err}`) },
       );
-
-      const response = await fetch(url, {
-        headers,
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        throw new Error(`Jito API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
 
       // Jito returns APY as percentage (e.g., 8.5 for 8.5%)
       // Convert to basis points
