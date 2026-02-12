@@ -261,13 +261,21 @@ async function main() {
   );
 }
 
+/**
+ * YieldDataSource interface — abstracts mock vs real yield data.
+ * Phase 1 uses MockYieldSource, Phase 2 uses JitoYieldClient.
+ */
+export interface YieldDataSource {
+  generateSnapshot(): YieldSnapshot | Promise<YieldSnapshot>;
+}
+
 export {
   MockYieldSource,
-  YieldSnapshot,
   classifyYieldRegime,
   buildOracleSyncIx,
   runYieldSync,
 };
+export type { YieldSnapshot };
 
 // Run when executed directly
 if (process.argv[1]?.replace(/\.(js|ts)$/, '').endsWith('yield-sync')) {

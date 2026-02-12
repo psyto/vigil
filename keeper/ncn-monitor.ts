@@ -246,7 +246,26 @@ async function main() {
   await runMonitor(connection, authority, DEFAULT_NCNS, intervalMs);
 }
 
-export { MockNcnDataSource, NcnConfig, runMonitor, DEFAULT_NCNS, main as runMonitorMain };
+/**
+ * NcnDataSource interface — abstracts mock vs real data sources.
+ * Phase 1 uses MockNcnDataSource, Phase 2 uses FragmetricClient.
+ */
+export interface NcnDataSource {
+  generateSample(ncnAddress: PublicKey): {
+    uptimeE6: number;
+    totalRestakedSol: number;
+    restakerCount: number;
+    slashingEvent: boolean;
+  } | Promise<{
+    uptimeE6: number;
+    totalRestakedSol: number;
+    restakerCount: number;
+    slashingEvent: boolean;
+  }>;
+}
+
+export { MockNcnDataSource, runMonitor, DEFAULT_NCNS, main as runMonitorMain };
+export type { NcnConfig };
 
 // Run when executed directly
 if (process.argv[1]?.replace(/\.(js|ts)$/, '').endsWith('ncn-monitor')) {
