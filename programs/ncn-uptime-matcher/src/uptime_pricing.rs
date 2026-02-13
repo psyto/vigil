@@ -41,7 +41,9 @@ pub fn process_init(
 
     verify_init_preconditions(ctx_account, UPTIME_MATCHER_MAGIC, "NCN-UPTIME-MATCHER")?;
 
-    let initial_uptime = u64::from_le_bytes(data[18..26].try_into().unwrap());
+    let initial_uptime = u64::from_le_bytes(
+        data[18..26].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
     if initial_uptime > MAX_PROBABILITY {
         msg!("NCN-UPTIME-MATCHER: Initial uptime {} exceeds max {}", initial_uptime, MAX_PROBABILITY);
         return Err(UptimeMatcherError::InvalidProbability.into());
@@ -90,12 +92,15 @@ pub fn process_init(
     // Zero reserved
     ctx_data[248..CTX_SIZE].fill(0);
 
+    let resolution_ts = i64::from_le_bytes(
+        data[26..34].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
     msg!(
         "INIT: lp_pda={} mode={} uptime={} resolution_ts={}",
         lp_pda.key,
         data[1],
         initial_uptime,
-        i64::from_le_bytes(data[26..34].try_into().unwrap()),
+        resolution_ts,
     );
 
     Ok(())
@@ -129,21 +134,25 @@ pub fn process_match(
     }
 
     let base_spread = u32::from_le_bytes(
-        ctx_data[BASE_SPREAD_OFFSET..BASE_SPREAD_OFFSET + 4].try_into().unwrap(),
+        ctx_data[BASE_SPREAD_OFFSET..BASE_SPREAD_OFFSET + 4]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let edge_spread = u32::from_le_bytes(
-        ctx_data[EDGE_SPREAD_OFFSET..EDGE_SPREAD_OFFSET + 4].try_into().unwrap(),
+        ctx_data[EDGE_SPREAD_OFFSET..EDGE_SPREAD_OFFSET + 4]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let max_spread = u32::from_le_bytes(
-        ctx_data[MAX_SPREAD_OFFSET..MAX_SPREAD_OFFSET + 4].try_into().unwrap(),
+        ctx_data[MAX_SPREAD_OFFSET..MAX_SPREAD_OFFSET + 4]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let uptime_e6 = u64::from_le_bytes(
-        ctx_data[CURRENT_UPTIME_OFFSET..CURRENT_UPTIME_OFFSET + 8].try_into().unwrap(),
+        ctx_data[CURRENT_UPTIME_OFFSET..CURRENT_UPTIME_OFFSET + 8]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let signal_adj = u64::from_le_bytes(
         ctx_data[SIGNAL_ADJUSTED_SPREAD_OFFSET..SIGNAL_ADJUSTED_SPREAD_OFFSET + 8]
             .try_into()
-            .unwrap(),
+            .map_err(|_| ProgramError::InvalidAccountData)?,
     );
 
     // Reject if uptime probability is 0 (not initialized)
@@ -154,7 +163,8 @@ pub fn process_match(
 
     // Check oracle staleness (reject if > 200 slots old)
     let last_update = u64::from_le_bytes(
-        ctx_data[LAST_UPDATE_SLOT_OFFSET..LAST_UPDATE_SLOT_OFFSET + 8].try_into().unwrap(),
+        ctx_data[LAST_UPDATE_SLOT_OFFSET..LAST_UPDATE_SLOT_OFFSET + 8]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let clock = Clock::get()?;
     if clock.slot.saturating_sub(last_update) > 200 {
@@ -261,31 +271,37 @@ pub fn process_uptime_sync(
             return Err(UptimeMatcherError::MarketResolved.into());
         }
 
-        let stored_oracle = read_ncn_oracle(&ctx_data);
+        let stored_oracle = read_ncn_oracle(&ctx_data)?;
         if *oracle.key != stored_oracle {
             msg!("NCN-UPTIME-MATCHER: Oracle mismatch");
             return Err(UptimeMatcherError::OracleMismatch.into());
         }
     }
 
-    let new_uptime = u64::from_le_bytes(data[1..9].try_into().unwrap());
+    let new_uptime = u64::from_le_bytes(
+        data[1..9].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
     if new_uptime > MAX_PROBABILITY {
         return Err(UptimeMatcherError::InvalidProbability.into());
     }
 
-    let signal_severity = u64::from_le_bytes(data[9..17].try_into().unwrap());
+    let signal_severity = u64::from_le_bytes(
+        data[9..17].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
     if signal_severity > SIGNAL_CRITICAL {
         return Err(UptimeMatcherError::InvalidSignalSeverity.into());
     }
 
-    let signal_spread = u64::from_le_bytes(data[17..25].try_into().unwrap());
+    let signal_spread = u64::from_le_bytes(
+        data[17..25].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
     let clock = Clock::get()?;
 
     let mut ctx_data = ctx_account.try_borrow_mut_data()?;
     let old_uptime = u64::from_le_bytes(
         ctx_data[CURRENT_UPTIME_OFFSET..CURRENT_UPTIME_OFFSET + 8]
             .try_into()
-            .unwrap(),
+            .map_err(|_| ProgramError::InvalidAccountData)?,
     );
 
     ctx_data[CURRENT_UPTIME_OFFSET..CURRENT_UPTIME_OFFSET + 8]
@@ -349,7 +365,7 @@ pub fn process_resolve(
             return Err(UptimeMatcherError::MarketResolved.into());
         }
 
-        let stored_oracle = read_ncn_oracle(&ctx_data);
+        let stored_oracle = read_ncn_oracle(&ctx_data)?;
         if *oracle.key != stored_oracle {
             msg!("NCN-UPTIME-MATCHER: Oracle mismatch");
             return Err(UptimeMatcherError::OracleMismatch.into());

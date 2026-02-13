@@ -72,13 +72,22 @@ pub fn process_init(
     // Zero reserved
     ctx_data[272..CTX_SIZE].fill(0);
 
+    let base_spread_val = u32::from_le_bytes(
+        data[2..6].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+    let yield_vol_val = u32::from_le_bytes(
+        data[6..10].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+    let max_spread_val = u32::from_le_bytes(
+        data[10..14].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
     msg!(
         "INIT: lp_pda={} mode={} base_spread={} yield_vol_spread={} max_spread={}",
         lp_pda.key,
         data[1],
-        u32::from_le_bytes(data[2..6].try_into().unwrap()),
-        u32::from_le_bytes(data[6..10].try_into().unwrap()),
-        u32::from_le_bytes(data[10..14].try_into().unwrap()),
+        base_spread_val,
+        yield_vol_val,
+        max_spread_val,
     );
 
     Ok(())
@@ -106,16 +115,20 @@ pub fn process_match(
     // Read pricing parameters
     let ctx_data = ctx_account.try_borrow_data()?;
     let base_spread = u32::from_le_bytes(
-        ctx_data[BASE_SPREAD_OFFSET..BASE_SPREAD_OFFSET + 4].try_into().unwrap(),
+        ctx_data[BASE_SPREAD_OFFSET..BASE_SPREAD_OFFSET + 4]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let yield_vol_spread = u32::from_le_bytes(
-        ctx_data[YIELD_VOL_SPREAD_OFFSET..YIELD_VOL_SPREAD_OFFSET + 4].try_into().unwrap(),
+        ctx_data[YIELD_VOL_SPREAD_OFFSET..YIELD_VOL_SPREAD_OFFSET + 4]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let max_spread = u32::from_le_bytes(
-        ctx_data[MAX_SPREAD_OFFSET..MAX_SPREAD_OFFSET + 4].try_into().unwrap(),
+        ctx_data[MAX_SPREAD_OFFSET..MAX_SPREAD_OFFSET + 4]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let yield_mark = u64::from_le_bytes(
-        ctx_data[YIELD_MARK_PRICE_OFFSET..YIELD_MARK_PRICE_OFFSET + 8].try_into().unwrap(),
+        ctx_data[YIELD_MARK_PRICE_OFFSET..YIELD_MARK_PRICE_OFFSET + 8]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let regime = YieldRegime::from_u8(ctx_data[YIELD_REGIME_OFFSET]);
 
@@ -127,7 +140,8 @@ pub fn process_match(
 
     // Check oracle staleness (reject if > 100 slots old)
     let last_update = u64::from_le_bytes(
-        ctx_data[LAST_UPDATE_SLOT_OFFSET..LAST_UPDATE_SLOT_OFFSET + 8].try_into().unwrap(),
+        ctx_data[LAST_UPDATE_SLOT_OFFSET..LAST_UPDATE_SLOT_OFFSET + 8]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
     let clock = Clock::get()?;
     if clock.slot.saturating_sub(last_update) > 100 {
@@ -208,10 +222,12 @@ pub fn process_oracle_sync(
 
         // Verify passed accounts match stored oracle accounts
         let stored_yield_feed = Pubkey::new_from_array(
-            ctx_data[NCN_YIELD_FEED_OFFSET..NCN_YIELD_FEED_OFFSET + 32].try_into().unwrap(),
+            ctx_data[NCN_YIELD_FEED_OFFSET..NCN_YIELD_FEED_OFFSET + 32]
+                .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
         );
         let stored_perf_feed = Pubkey::new_from_array(
-            ctx_data[NCN_PERFORMANCE_FEED_OFFSET..NCN_PERFORMANCE_FEED_OFFSET + 32].try_into().unwrap(),
+            ctx_data[NCN_PERFORMANCE_FEED_OFFSET..NCN_PERFORMANCE_FEED_OFFSET + 32]
+                .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
         );
         if *ncn_yield_feed.key != stored_yield_feed {
             msg!("YIELD-MATCHER: NcnYieldFeed mismatch");
@@ -223,11 +239,19 @@ pub fn process_oracle_sync(
         }
     }
 
-    let current_yield = u64::from_le_bytes(data[1..9].try_into().unwrap());
-    let yield_mark = u64::from_le_bytes(data[9..17].try_into().unwrap());
+    let current_yield = u64::from_le_bytes(
+        data[1..9].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+    let yield_mark = u64::from_le_bytes(
+        data[9..17].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
     let regime = data[17];
-    let yield_7d = u64::from_le_bytes(data[18..26].try_into().unwrap());
-    let yield_30d = u64::from_le_bytes(data[26..34].try_into().unwrap());
+    let yield_7d = u64::from_le_bytes(
+        data[18..26].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
+    let yield_30d = u64::from_le_bytes(
+        data[26..34].try_into().map_err(|_| ProgramError::InvalidInstructionData)?,
+    );
 
     // Validate regime
     if regime > 4 {
@@ -238,7 +262,8 @@ pub fn process_oracle_sync(
 
     let mut ctx_data = ctx_account.try_borrow_mut_data()?;
     let old_yield = u64::from_le_bytes(
-        ctx_data[CURRENT_YIELD_OFFSET..CURRENT_YIELD_OFFSET + 8].try_into().unwrap(),
+        ctx_data[CURRENT_YIELD_OFFSET..CURRENT_YIELD_OFFSET + 8]
+            .try_into().map_err(|_| ProgramError::InvalidAccountData)?,
     );
 
     ctx_data[CURRENT_YIELD_OFFSET..CURRENT_YIELD_OFFSET + 8].copy_from_slice(&current_yield.to_le_bytes());
