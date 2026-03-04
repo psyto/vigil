@@ -219,3 +219,290 @@ impl AggregatedRestakingFeed {
         self.ncn_count
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =========================================================================
+    // Helper: build a default NcnPerformanceFeed for testing
+    // =========================================================================
+    fn make_perf_feed() -> NcnPerformanceFeed {
+        NcnPerformanceFeed {
+            authority: Pubkey::default(),
+            ncn_address: Pubkey::default(),
+            ncn_name: "Test NCN".to_string(),
+            uptime_probability_e6: 995_000,
+            total_slashing_events: 0,
+            last_slashing_time: 0,
+            total_restaked_sol: 500_000_000_000_000,
+            restaker_count: 1200,
+            performance_history: Vec::new(),
+            signal_severity: 0,
+            sovereign_infra_score: 0,
+            is_active: true,
+            last_updated: 1_700_000_000,
+            bump: 255,
+        }
+    }
+
+    fn make_yield_feed() -> NcnYieldFeed {
+        NcnYieldFeed {
+            authority: Pubkey::default(),
+            ncn_address: Pubkey::default(),
+            current_apy_bps: 800,
+            apy_7d_avg: 780,
+            apy_30d_avg: 790,
+            yield_variance_bps: 100,
+            yield_regime: 2,
+            yield_history: Vec::new(),
+            base_staking_apy_bps: 600,
+            mev_apy_bps: 100,
+            restaking_premium_bps: 100,
+            is_active: true,
+            last_updated: 1_700_000_000,
+            bump: 255,
+        }
+    }
+
+    // =========================================================================
+    // NcnPerformanceFeed::was_recently_slashed
+    // =========================================================================
+
+    #[test]
+    fn test_no_slashing_events_returns_false() {
+        let feed = make_perf_feed();
+        assert!(!feed.was_recently_slashed(1_700_000_000));
+    }
+
+    #[test]
+    fn test_recent_slashing_returns_true() {
+        let mut feed = make_perf_feed();
+        feed.total_slashing_events = 1;
+        feed.last_slashing_time = 1_700_000_000 - 3600; // 1 hour ago
+        assert!(feed.was_recently_slashed(1_700_000_000));
+    }
+
+    #[test]
+    fn test_old_slashing_returns_false() {
+        let mut feed = make_perf_feed();
+        feed.total_slashing_events = 1;
+        feed.last_slashing_time = 1_700_000_000 - 90_000; // >24h ago
+        assert!(!feed.was_recently_slashed(1_700_000_000));
+    }
+
+    #[test]
+    fn test_slashing_exactly_24h_ago_returns_false() {
+        let mut feed = make_perf_feed();
+        feed.total_slashing_events = 1;
+        feed.last_slashing_time = 1_700_000_000 - 86_400; // exactly 24h
+        // current - last = 86_400, which is NOT < 86_400
+        assert!(!feed.was_recently_slashed(1_700_000_000));
+    }
+
+    #[test]
+    fn test_slashing_just_under_24h_returns_true() {
+        let mut feed = make_perf_feed();
+        feed.total_slashing_events = 3;
+        feed.last_slashing_time = 1_700_000_000 - 86_399;
+        assert!(feed.was_recently_slashed(1_700_000_000));
+    }
+
+    // =========================================================================
+    // NcnPerformanceFeed::average_uptime
+    // =========================================================================
+
+    #[test]
+    fn test_average_uptime_empty_history_returns_current() {
+        let feed = make_perf_feed();
+        assert_eq!(feed.average_uptime(), 995_000);
+    }
+
+    #[test]
+    fn test_average_uptime_single_sample() {
+        let mut feed = make_perf_feed();
+        feed.performance_history.push(NcnPerformanceSample {
+            uptime_e6: 990_000,
+            total_restaked_sol: 0,
+            restaker_count: 0,
+            timestamp: 0,
+        });
+        assert_eq!(feed.average_uptime(), 990_000);
+    }
+
+    #[test]
+    fn test_average_uptime_multiple_samples() {
+        let mut feed = make_perf_feed();
+        for uptime in [990_000u64, 995_000, 1_000_000] {
+            feed.performance_history.push(NcnPerformanceSample {
+                uptime_e6: uptime,
+                total_restaked_sol: 0,
+                restaker_count: 0,
+                timestamp: 0,
+            });
+        }
+        // (990_000 + 995_000 + 1_000_000) / 3 = 995_000
+        assert_eq!(feed.average_uptime(), 995_000);
+    }
+
+    #[test]
+    fn test_average_uptime_varied_samples() {
+        let mut feed = make_perf_feed();
+        for uptime in [500_000u64, 600_000, 700_000, 800_000] {
+            feed.performance_history.push(NcnPerformanceSample {
+                uptime_e6: uptime,
+                total_restaked_sol: 0,
+                restaker_count: 0,
+                timestamp: 0,
+            });
+        }
+        // (500000 + 600000 + 700000 + 800000) / 4 = 650_000
+        assert_eq!(feed.average_uptime(), 650_000);
+    }
+
+    // =========================================================================
+    // NcnYieldFeed::classify_regime
+    // =========================================================================
+
+    #[test]
+    fn test_classify_regime_very_low() {
+        assert_eq!(NcnYieldFeed::classify_regime(0), 0);
+        assert_eq!(NcnYieldFeed::classify_regime(25), 0);
+        assert_eq!(NcnYieldFeed::classify_regime(50), 0);
+    }
+
+    #[test]
+    fn test_classify_regime_low() {
+        assert_eq!(NcnYieldFeed::classify_regime(51), 1);
+        assert_eq!(NcnYieldFeed::classify_regime(100), 1);
+        assert_eq!(NcnYieldFeed::classify_regime(150), 1);
+    }
+
+    #[test]
+    fn test_classify_regime_normal() {
+        assert_eq!(NcnYieldFeed::classify_regime(151), 2);
+        assert_eq!(NcnYieldFeed::classify_regime(250), 2);
+        assert_eq!(NcnYieldFeed::classify_regime(400), 2);
+    }
+
+    #[test]
+    fn test_classify_regime_high() {
+        assert_eq!(NcnYieldFeed::classify_regime(401), 3);
+        assert_eq!(NcnYieldFeed::classify_regime(600), 3);
+        assert_eq!(NcnYieldFeed::classify_regime(800), 3);
+    }
+
+    #[test]
+    fn test_classify_regime_extreme() {
+        assert_eq!(NcnYieldFeed::classify_regime(801), 4);
+        assert_eq!(NcnYieldFeed::classify_regime(1000), 4);
+        assert_eq!(NcnYieldFeed::classify_regime(10_000), 4);
+    }
+
+    // =========================================================================
+    // NcnYieldFeed::calculate_variance
+    // =========================================================================
+
+    #[test]
+    fn test_variance_empty_history() {
+        let feed = make_yield_feed();
+        assert_eq!(feed.calculate_variance(), 0);
+    }
+
+    #[test]
+    fn test_variance_single_sample() {
+        let mut feed = make_yield_feed();
+        feed.yield_history.push(YieldSample {
+            apy_bps: 800,
+            variance_bps: 0,
+            timestamp: 0,
+        });
+        assert_eq!(feed.calculate_variance(), 0);
+    }
+
+    #[test]
+    fn test_variance_identical_samples() {
+        let mut feed = make_yield_feed();
+        for _ in 0..5 {
+            feed.yield_history.push(YieldSample {
+                apy_bps: 800,
+                variance_bps: 0,
+                timestamp: 0,
+            });
+        }
+        assert_eq!(feed.calculate_variance(), 0);
+    }
+
+    #[test]
+    fn test_variance_known_values() {
+        let mut feed = make_yield_feed();
+        // Values: 800, 810, 790, 820, 780
+        for apy in [800u64, 810, 790, 820, 780] {
+            feed.yield_history.push(YieldSample {
+                apy_bps: apy,
+                variance_bps: 0,
+                timestamp: 0,
+            });
+        }
+        // avg = 800
+        // diffs: 0, 10, 10, 20, 20
+        // squared: 0, 100, 100, 400, 400
+        // variance = 1000 / 4 = 250
+        // sqrt(250) ~= 15
+        let v = feed.calculate_variance();
+        assert_eq!(v, 15); // (250.0_f64).sqrt() as u64 = 15
+    }
+
+    #[test]
+    fn test_variance_high_spread() {
+        let mut feed = make_yield_feed();
+        for apy in [200u64, 1000] {
+            feed.yield_history.push(YieldSample {
+                apy_bps: apy,
+                variance_bps: 0,
+                timestamp: 0,
+            });
+        }
+        // avg = 600
+        // diffs: 400, 400
+        // squared: 160000, 160000
+        // variance = 320000 / 1 = 320000
+        // sqrt(320000) ~= 565
+        let v = feed.calculate_variance();
+        assert_eq!(v, 565); // (320000.0_f64).sqrt() as u64
+    }
+
+    // =========================================================================
+    // AggregatedRestakingFeed::active_count
+    // =========================================================================
+
+    #[test]
+    fn test_active_count() {
+        let feed = AggregatedRestakingFeed {
+            authority: Pubkey::default(),
+            total_restaked_sol: 0,
+            weighted_avg_apy_bps: 0,
+            ncn_count: 5,
+            ncn_feeds: Vec::new(),
+            is_active: true,
+            last_updated: 0,
+            bump: 255,
+        };
+        assert_eq!(feed.active_count(), 5);
+    }
+
+    #[test]
+    fn test_active_count_zero() {
+        let feed = AggregatedRestakingFeed {
+            authority: Pubkey::default(),
+            total_restaked_sol: 0,
+            weighted_avg_apy_bps: 0,
+            ncn_count: 0,
+            ncn_feeds: Vec::new(),
+            is_active: true,
+            last_updated: 0,
+            bump: 255,
+        };
+        assert_eq!(feed.active_count(), 0);
+    }
+}
