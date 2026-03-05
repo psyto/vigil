@@ -141,7 +141,7 @@ cd demo && npm run dev
 - [Solana](https://solana.com/) — runtime
 - [Anchor](https://www.anchor-lang.com/) — ncn-oracle framework
 - [Percolator](https://percolator.trade/) — perpetuals execution layer
-- [matcher-common](../percolator-matchers/packages/matcher-common) — shared matcher utilities
+- [matcher-common](../percolator-matcher-sdk) — shared matcher utilities
 
 ## License
 
