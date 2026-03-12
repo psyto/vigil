@@ -4,6 +4,9 @@ import {
   UptimeMatcherMode,
   ResolutionOutcome,
   SignalSeverity,
+  IndexMatcherMode,
+  GovernanceMode,
+  MatcherType,
 } from "./types";
 
 describe("Enum values", () => {
@@ -35,5 +38,21 @@ describe("Enum values", () => {
     expect(SignalSeverity.Low).toBe(1);
     expect(SignalSeverity.High).toBe(2);
     expect(SignalSeverity.Critical).toBe(3);
+  });
+
+  test("IndexMatcherMode values match Rust program", () => {
+    expect(IndexMatcherMode.FullIndex).toBe(0);
+    expect(IndexMatcherMode.ExclusionIndex).toBe(1);
+  });
+
+  test("GovernanceMode values match Rust program", () => {
+    expect(GovernanceMode.SingleAuthority).toBe(0);
+    expect(GovernanceMode.MultiReporter).toBe(1);
+  });
+
+  test("MatcherType values match Rust program", () => {
+    expect(MatcherType.Yield).toBe(0);
+    expect(MatcherType.Uptime).toBe(1);
+    expect(MatcherType.Index).toBe(2);
   });
 });

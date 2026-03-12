@@ -661,4 +661,210 @@ mod tests {
         };
         assert_eq!(feed.active_count(), 0);
     }
+
+    // =========================================================================
+    // PendingSubmission::median_u64
+    // =========================================================================
+
+    #[test]
+    fn test_median_u64_empty() {
+        assert_eq!(PendingSubmission::median_u64(&mut vec![]), 0);
+    }
+
+    #[test]
+    fn test_median_u64_single() {
+        assert_eq!(PendingSubmission::median_u64(&mut vec![42]), 42);
+    }
+
+    #[test]
+    fn test_median_u64_odd_count() {
+        assert_eq!(PendingSubmission::median_u64(&mut vec![10, 30, 20]), 20);
+    }
+
+    #[test]
+    fn test_median_u64_even_count() {
+        // [10, 20, 30, 40] -> median = (20 + 30) / 2 = 25
+        assert_eq!(PendingSubmission::median_u64(&mut vec![40, 10, 30, 20]), 25);
+    }
+
+    #[test]
+    fn test_median_u64_identical_values() {
+        assert_eq!(PendingSubmission::median_u64(&mut vec![100, 100, 100]), 100);
+    }
+
+    #[test]
+    fn test_median_u64_unsorted_input() {
+        assert_eq!(PendingSubmission::median_u64(&mut vec![5, 1, 3, 2, 4]), 3);
+    }
+
+    #[test]
+    fn test_median_u64_large_values() {
+        let mut vals = vec![990_000u64, 995_000, 993_000, 997_000, 991_000];
+        assert_eq!(PendingSubmission::median_u64(&mut vals), 993_000);
+    }
+
+    // =========================================================================
+    // PendingSubmission::median_u32
+    // =========================================================================
+
+    #[test]
+    fn test_median_u32_empty() {
+        assert_eq!(PendingSubmission::median_u32(&mut vec![]), 0);
+    }
+
+    #[test]
+    fn test_median_u32_single() {
+        assert_eq!(PendingSubmission::median_u32(&mut vec![7]), 7);
+    }
+
+    #[test]
+    fn test_median_u32_odd_count() {
+        assert_eq!(PendingSubmission::median_u32(&mut vec![100, 300, 200]), 200);
+    }
+
+    #[test]
+    fn test_median_u32_even_count() {
+        assert_eq!(PendingSubmission::median_u32(&mut vec![10, 40, 20, 30]), 25);
+    }
+
+    // =========================================================================
+    // ReporterRegistry
+    // =========================================================================
+
+    fn make_registry() -> ReporterRegistry {
+        ReporterRegistry {
+            authority: Pubkey::default(),
+            ncn_address: Pubkey::default(),
+            min_reporters: 3,
+            stake_requirement: 1_000_000_000,
+            slash_threshold_bps: 500,
+            reporters: Vec::new(),
+            is_active: true,
+            bump: 255,
+        }
+    }
+
+    fn make_reporter(active: bool) -> ReporterInfo {
+        ReporterInfo {
+            pubkey: Pubkey::new_unique(),
+            stake_account: Pubkey::new_unique(),
+            total_reports: 0,
+            slashing_count: 0,
+            last_report_time: 0,
+            is_active: active,
+        }
+    }
+
+    #[test]
+    fn test_find_reporter_empty() {
+        let registry = make_registry();
+        assert_eq!(registry.find_reporter(&Pubkey::new_unique()), None);
+    }
+
+    #[test]
+    fn test_find_reporter_active() {
+        let mut registry = make_registry();
+        let reporter = make_reporter(true);
+        let pk = reporter.pubkey;
+        registry.reporters.push(reporter);
+        assert_eq!(registry.find_reporter(&pk), Some(0));
+    }
+
+    #[test]
+    fn test_find_reporter_inactive() {
+        let mut registry = make_registry();
+        let reporter = make_reporter(false);
+        let pk = reporter.pubkey;
+        registry.reporters.push(reporter);
+        assert_eq!(registry.find_reporter(&pk), None);
+    }
+
+    #[test]
+    fn test_active_reporter_count() {
+        let mut registry = make_registry();
+        registry.reporters.push(make_reporter(true));
+        registry.reporters.push(make_reporter(false));
+        registry.reporters.push(make_reporter(true));
+        assert_eq!(registry.active_reporter_count(), 2);
+    }
+
+    #[test]
+    fn test_active_reporter_count_all_inactive() {
+        let mut registry = make_registry();
+        registry.reporters.push(make_reporter(false));
+        registry.reporters.push(make_reporter(false));
+        assert_eq!(registry.active_reporter_count(), 0);
+    }
+
+    // =========================================================================
+    // PendingSubmission::has_reporter_submitted
+    // =========================================================================
+
+    #[test]
+    fn test_has_reporter_submitted_empty() {
+        let ps = PendingSubmission {
+            ncn_address: Pubkey::default(),
+            round: 0,
+            submissions: Vec::new(),
+            is_finalized: false,
+            finalized_uptime_e6: 0,
+            finalized_restaked_sol: 0,
+            finalized_restaker_count: 0,
+            finalized_apy_bps: 0,
+            finalized_time: 0,
+            bump: 255,
+        };
+        assert!(!ps.has_reporter_submitted(&Pubkey::new_unique()));
+    }
+
+    #[test]
+    fn test_has_reporter_submitted_found() {
+        let reporter = Pubkey::new_unique();
+        let ps = PendingSubmission {
+            ncn_address: Pubkey::default(),
+            round: 0,
+            submissions: vec![ReporterSubmission {
+                reporter,
+                uptime_e6: 990_000,
+                total_restaked_sol: 500_000_000,
+                restaker_count: 100,
+                current_apy_bps: 800,
+                timestamp: 1_700_000_000,
+            }],
+            is_finalized: false,
+            finalized_uptime_e6: 0,
+            finalized_restaked_sol: 0,
+            finalized_restaker_count: 0,
+            finalized_apy_bps: 0,
+            finalized_time: 0,
+            bump: 255,
+        };
+        assert!(ps.has_reporter_submitted(&reporter));
+    }
+
+    #[test]
+    fn test_has_reporter_submitted_not_found() {
+        let reporter = Pubkey::new_unique();
+        let other = Pubkey::new_unique();
+        let ps = PendingSubmission {
+            ncn_address: Pubkey::default(),
+            round: 0,
+            submissions: vec![ReporterSubmission {
+                reporter,
+                uptime_e6: 990_000,
+                total_restaked_sol: 500_000_000,
+                restaker_count: 100,
+                current_apy_bps: 800,
+                timestamp: 1_700_000_000,
+            }],
+            is_finalized: false,
+            finalized_uptime_e6: 0,
+            finalized_restaked_sol: 0,
+            finalized_restaker_count: 0,
+            finalized_apy_bps: 0,
+            finalized_time: 0,
+            bump: 255,
+        };
+        assert!(!ps.has_reporter_submitted(&other));
+    }
 }

@@ -17,7 +17,7 @@ import {
 const INDEX_MATCHER_MAGIC = BigInt("0x4944584D41544300"); // "IDXMATC\0"
 
 const INDEX_MATCHER_PROGRAM_ID = new PublicKey(
-  "IDXMtch111111111111111111111111111111111111"
+  "iDXMtch111111111111111111111111111111111111"
 );
 
 // ============================================================================
