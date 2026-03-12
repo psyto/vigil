@@ -52,6 +52,9 @@ pub struct NcnPerformanceFeed {
 
     /// PDA bump seed
     pub bump: u8,
+
+    /// Governance mode: 0 = SingleAuthority (legacy), 1 = MultiReporter
+    pub governance_mode: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, InitSpace)]
@@ -112,6 +115,9 @@ pub struct NcnYieldFeed {
 
     /// PDA bump seed
     pub bump: u8,
+
+    /// Governance mode: 0 = SingleAuthority (legacy), 1 = MultiReporter
+    pub governance_mode: u8,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, InitSpace)]
@@ -153,6 +159,114 @@ pub struct AggregatedRestakingFeed {
     /// PDA bump seed
     pub bump: u8,
 }
+
+// =============================================================================
+// Multi-Reporter Consensus State
+// =============================================================================
+
+/// Reporter registry — manages authorized data reporters for an NCN
+#[account]
+#[derive(InitSpace)]
+pub struct ReporterRegistry {
+    /// Governance authority that can manage reporters
+    pub authority: Pubkey,
+
+    /// Which NCN this registry is for
+    pub ncn_address: Pubkey,
+
+    /// Minimum reporters required for valid consensus
+    pub min_reporters: u8,
+
+    /// SOL lamports required to register as reporter
+    pub stake_requirement: u64,
+
+    /// Deviation from consensus that triggers slashing (in basis points)
+    pub slash_threshold_bps: u64,
+
+    /// Registered reporters (max 16)
+    #[max_len(16)]
+    pub reporters: Vec<ReporterInfo>,
+
+    /// Whether registry is active
+    pub is_active: bool,
+
+    /// PDA bump seed
+    pub bump: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+pub struct ReporterInfo {
+    /// Reporter's identity
+    pub pubkey: Pubkey,
+
+    /// PDA holding reporter's staked SOL
+    pub stake_account: Pubkey,
+
+    /// Total lifetime submissions
+    pub total_reports: u64,
+
+    /// Times slashed
+    pub slashing_count: u32,
+
+    /// Last submission timestamp
+    pub last_report_time: i64,
+
+    /// Whether reporter is active
+    pub is_active: bool,
+}
+
+/// Pending submission — collects reports from multiple reporters per round
+#[account]
+#[derive(InitSpace)]
+pub struct PendingSubmission {
+    /// NCN this submission is for
+    pub ncn_address: Pubkey,
+
+    /// Round number (incrementing counter)
+    pub round: u64,
+
+    /// Individual reporter submissions (max 16)
+    #[max_len(16)]
+    pub submissions: Vec<ReporterSubmission>,
+
+    /// Whether this round has been finalized
+    pub is_finalized: bool,
+
+    /// Finalized values (set after finalization)
+    pub finalized_uptime_e6: u64,
+    pub finalized_restaked_sol: u64,
+    pub finalized_restaker_count: u32,
+    pub finalized_apy_bps: u64,
+    pub finalized_time: i64,
+
+    /// PDA bump seed
+    pub bump: u8,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, InitSpace)]
+pub struct ReporterSubmission {
+    /// Reporter who submitted
+    pub reporter: Pubkey,
+
+    /// Reported uptime (0-1,000,000)
+    pub uptime_e6: u64,
+
+    /// Reported total restaked SOL
+    pub total_restaked_sol: u64,
+
+    /// Reported restaker count
+    pub restaker_count: u32,
+
+    /// Reported current APY in bps
+    pub current_apy_bps: u64,
+
+    /// Submission timestamp
+    pub timestamp: i64,
+}
+
+// =============================================================================
+// Impl blocks
+// =============================================================================
 
 impl NcnPerformanceFeed {
     /// Check if the NCN has been slashed recently (within last 24h)
@@ -220,6 +334,46 @@ impl AggregatedRestakingFeed {
     }
 }
 
+impl ReporterRegistry {
+    pub fn find_reporter(&self, pubkey: &Pubkey) -> Option<usize> {
+        self.reporters.iter().position(|r| r.pubkey == *pubkey && r.is_active)
+    }
+
+    pub fn active_reporter_count(&self) -> usize {
+        self.reporters.iter().filter(|r| r.is_active).count()
+    }
+}
+
+impl PendingSubmission {
+    pub fn has_reporter_submitted(&self, reporter: &Pubkey) -> bool {
+        self.submissions.iter().any(|s| s.reporter == *reporter)
+    }
+
+    /// Compute median of u64 values
+    pub fn median_u64(values: &mut Vec<u64>) -> u64 {
+        values.sort();
+        let len = values.len();
+        if len == 0 { return 0; }
+        if len % 2 == 0 {
+            (values[len / 2 - 1] + values[len / 2]) / 2
+        } else {
+            values[len / 2]
+        }
+    }
+
+    /// Compute median of u32 values
+    pub fn median_u32(values: &mut Vec<u32>) -> u32 {
+        values.sort();
+        let len = values.len();
+        if len == 0 { return 0; }
+        if len % 2 == 0 {
+            (values[len / 2 - 1] + values[len / 2]) / 2
+        } else {
+            values[len / 2]
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,6 +397,7 @@ mod tests {
             is_active: true,
             last_updated: 1_700_000_000,
             bump: 255,
+            governance_mode: 0,
         }
     }
 
@@ -262,6 +417,7 @@ mod tests {
             is_active: true,
             last_updated: 1_700_000_000,
             bump: 255,
+            governance_mode: 0,
         }
     }
 

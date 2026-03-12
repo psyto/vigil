@@ -45,6 +45,37 @@ export function deriveAggregatedFeedPda(): [PublicKey, number] {
   );
 }
 
+export function deriveReporterRegistryPda(
+  ncnAddress: PublicKey
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("reporter_registry"), ncnAddress.toBuffer()],
+    NCN_ORACLE_PROGRAM_ID
+  );
+}
+
+export function derivePendingSubmissionPda(
+  ncnAddress: PublicKey,
+  round: bigint
+): [PublicKey, number] {
+  const roundBytes = Buffer.alloc(8);
+  roundBytes.writeBigUInt64LE(round);
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("pending_submission"), ncnAddress.toBuffer(), roundBytes],
+    NCN_ORACLE_PROGRAM_ID
+  );
+}
+
+export function deriveReporterStakePda(
+  registry: PublicKey,
+  reporter: PublicKey
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("reporter_stake"), registry.toBuffer(), reporter.toBuffer()],
+    NCN_ORACLE_PROGRAM_ID
+  );
+}
+
 // ============================================================================
 // Account Deserialization
 // ============================================================================

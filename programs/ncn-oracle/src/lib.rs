@@ -10,6 +10,7 @@ use instructions::performance_feed::*;
 use instructions::yield_feed::*;
 use instructions::aggregated_feed::*;
 use instructions::signal::*;
+use instructions::reporter::*;
 
 #[program]
 pub mod ncn_oracle {
@@ -111,5 +112,56 @@ pub mod ncn_oracle {
         severity: u8,
     ) -> Result<()> {
         instructions::signal::update_signal_severity(ctx, severity)
+    }
+
+    // =========================================================================
+    // Multi-Reporter Consensus Instructions
+    // =========================================================================
+
+    /// Initialize a reporter registry for an NCN
+    pub fn initialize_reporter_registry(
+        ctx: Context<InitializeReporterRegistry>,
+        min_reporters: u8,
+        stake_requirement: u64,
+        slash_threshold_bps: u64,
+    ) -> Result<()> {
+        instructions::reporter::initialize_reporter_registry(ctx, min_reporters, stake_requirement, slash_threshold_bps)
+    }
+
+    /// Register a new reporter with staked SOL
+    pub fn register_reporter(ctx: Context<RegisterReporter>) -> Result<()> {
+        instructions::reporter::register_reporter(ctx)
+    }
+
+    /// Reporter submits data for a round
+    pub fn submit_report(
+        ctx: Context<SubmitReport>,
+        round: u64,
+        uptime_e6: u64,
+        total_restaked_sol: u64,
+        restaker_count: u32,
+        current_apy_bps: u64,
+    ) -> Result<()> {
+        instructions::reporter::submit_report(ctx, round, uptime_e6, total_restaked_sol, restaker_count, current_apy_bps)
+    }
+
+    /// Finalize a round once enough reporters have submitted
+    pub fn finalize_report(ctx: Context<FinalizeReport>) -> Result<()> {
+        instructions::reporter::finalize_report(ctx)
+    }
+
+    /// Slash a reporter whose submission deviated too far from consensus
+    pub fn slash_reporter(ctx: Context<SlashReporter>, reporter_pubkey: Pubkey) -> Result<()> {
+        instructions::reporter::slash_reporter(ctx, reporter_pubkey)
+    }
+
+    /// Deregister a reporter and return their stake
+    pub fn deregister_reporter(ctx: Context<DeregisterReporter>) -> Result<()> {
+        instructions::reporter::deregister_reporter(ctx)
+    }
+
+    /// Upgrade feeds from SingleAuthority to MultiReporter governance mode
+    pub fn upgrade_to_multi_reporter(ctx: Context<UpgradeToMultiReporter>) -> Result<()> {
+        instructions::reporter::upgrade_to_multi_reporter(ctx)
     }
 }

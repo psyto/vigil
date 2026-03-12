@@ -1,0 +1,18 @@
+[package]
+name = "index-matcher"
+version = "0.1.0"
+description = "Percolator matcher for NCN index perpetuals on Solana"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[features]
+no-entrypoint = []
+
+[dependencies]
+solana-program = "2.1"
+bytemuck = { version = "1.14", features = ["derive"] }
+blake3 = "=1.5.5"
+matcher-common = { path = "../../../percolator-fabrknt/sdk" }
+shank = "0.4"

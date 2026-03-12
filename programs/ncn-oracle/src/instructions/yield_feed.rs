@@ -23,6 +23,7 @@ pub fn initialize_ncn_yield_feed(
     feed.is_active = true;
     feed.last_updated = clock.unix_timestamp;
     feed.bump = ctx.bumps.ncn_yield_feed;
+    feed.governance_mode = 0; // SingleAuthority by default
 
     Ok(())
 }

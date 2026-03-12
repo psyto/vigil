@@ -3,6 +3,8 @@ members = [
     "programs/ncn-oracle",
     "programs/restaking-yield-matcher",
     "programs/ncn-uptime-matcher",
+    "programs/index-matcher",
+    "programs/volatility-mining",
 ]
 resolver = "2"
 

@@ -138,6 +138,135 @@ export enum ResolutionOutcome {
 }
 
 // ============================================================================
+// Index Matcher Types
+// ============================================================================
+
+export enum IndexMatcherMode {
+  FullIndex = 0,
+  ExclusionIndex = 1,
+}
+
+export interface IndexMatcherContext {
+  magic: bigint;
+  version: number;
+  mode: IndexMatcherMode;
+  lpPda: PublicKey;
+  baseSpreadBps: number;
+  indexVolSpreadBps: number;
+  maxSpreadBps: number;
+  impactKBps: number;
+  weightedAvgApyBps: bigint;
+  indexMarkPriceE6: bigint;
+  lastUpdateSlot: bigint;
+  indexRegime: YieldRegime;
+  totalRestakedSol: bigint;
+  ncnCount: number;
+  minNcnCount: number;
+  liquidityNotionalE6: bigint;
+  maxFillAbs: bigint;
+  aggregatedFeed: PublicKey;
+}
+
+// ============================================================================
+// Multi-Reporter Consensus Types
+// ============================================================================
+
+export interface ReporterRegistryData {
+  authority: PublicKey;
+  ncnAddress: PublicKey;
+  minReporters: number;
+  stakeRequirement: bigint;
+  slashThresholdBps: bigint;
+  reporters: ReporterInfoData[];
+  isActive: boolean;
+}
+
+export interface ReporterInfoData {
+  pubkey: PublicKey;
+  stakeAccount: PublicKey;
+  totalReports: bigint;
+  slashingCount: number;
+  lastReportTime: bigint;
+  isActive: boolean;
+}
+
+export interface PendingSubmissionData {
+  ncnAddress: PublicKey;
+  round: bigint;
+  submissions: ReporterSubmissionData[];
+  isFinalized: boolean;
+  finalizedUptimeE6: bigint;
+  finalizedRestakedSol: bigint;
+  finalizedRestakerCount: number;
+  finalizedApyBps: bigint;
+  finalizedTime: bigint;
+}
+
+export interface ReporterSubmissionData {
+  reporter: PublicKey;
+  uptimeE6: bigint;
+  totalRestakedSol: bigint;
+  restakerCount: number;
+  currentApyBps: bigint;
+  timestamp: bigint;
+}
+
+export enum GovernanceMode {
+  SingleAuthority = 0,
+  MultiReporter = 1,
+}
+
+// ============================================================================
+// Volatility Mining Types
+// ============================================================================
+
+export interface MiningConfigData {
+  authority: PublicKey;
+  rewardMint: PublicKey;
+  rewardVault: PublicKey;
+  emissionRatePerSlot: bigint;
+  regimeMultipliers: bigint[];
+  minDurationSlots: bigint;
+  epochDurationSlots: bigint;
+  currentEpoch: bigint;
+  epochStartSlot: bigint;
+  totalRewardWeight: bigint;
+  registeredLpCount: number;
+  isActive: boolean;
+}
+
+export interface LpStakeData {
+  lpPda: PublicKey;
+  owner: PublicKey;
+  matcherContext: PublicKey;
+  matcherType: number;
+  liquidityAmountE6: bigint;
+  entrySlot: bigint;
+  lastRecordSlot: bigint;
+  lastClaimEpoch: bigint;
+  currentEpochWeight: bigint;
+  totalClaimed: bigint;
+  isActive: boolean;
+}
+
+export interface EpochSnapshotData {
+  epoch: bigint;
+  totalRewardWeight: bigint;
+  totalRewards: bigint;
+  totalClaimed: bigint;
+  avgRegime: number;
+  slotStart: bigint;
+  slotEnd: bigint;
+  isFinalized: boolean;
+}
+
+export enum MatcherType {
+  Yield = 0,
+  Uptime = 1,
+  Index = 2,
+}
+
+// ============================================================================
 // Signal Types
 // ============================================================================
 

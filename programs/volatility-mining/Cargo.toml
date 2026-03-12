@@ -1,12 +1,12 @@
 [package]
-name = "ncn-oracle"
+name = "volatility-mining"
 version = "0.1.0"
-description = "NCN Performance and Yield Oracle for Restaking Risk Protocol"
+description = "Volatility mining rewards for restaking risk LPs"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "ncn_oracle"
+name = "volatility_mining"
 
 [features]
 no-entrypoint = []
@@ -17,4 +17,5 @@ default = []
 idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
-anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
+anchor-lang = "0.32.1"
+anchor-spl = "0.32.1"

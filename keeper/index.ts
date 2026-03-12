@@ -2,7 +2,7 @@
  * Vigil Keeper — Unified orchestrator
  *
  * Wires the full pipeline:
- *   ncn-monitor → signal-detector → uptime-sync + yield-sync
+ *   ncn-monitor → signal-detector → uptime-sync + yield-sync + index-sync
  *
  * All services run in mock mode (Phase 1) — no on-chain transactions.
  * Logs a unified view of the restaking risk pipeline.
@@ -13,6 +13,9 @@ import { MockNcnDataSource, DEFAULT_NCNS, type NcnConfig } from "./ncn-monitor";
 import { SignalDetector, type SignalEvent } from "./signal-detector";
 import { MockYieldSource, classifyYieldRegime } from "./yield-sync";
 import { SIGNAL_SPREAD_MAP } from "./uptime-sync";
+import { MockIndexSource, classifyIndexRegime } from "./index-sync";
+import { ReporterFinalizer, runReporterFinalizer } from "./reporter-finalizer";
+import { MockMiningTracker } from "./mining-keeper";
 
 // ============================================================================
 // Configuration
@@ -60,6 +63,9 @@ function runPipeline(ncnConfigs: NcnConfig[]) {
     const baseApy = yieldBaseApys[config.name] ?? 800;
     yieldSources.set(config.ncnAddress.toBase58(), new MockYieldSource(baseApy));
   }
+
+  // Initialize index source (aggregated across all NCNs)
+  const indexSource = new MockIndexSource(850, ncnConfigs.length);
 
   console.log("=".repeat(70));
   console.log("  VIGIL KEEPER — Restaking Risk Pipeline (Mock Mode)");
@@ -152,6 +158,17 @@ function runPipeline(ncnConfigs: NcnConfig[]) {
     }
   };
 
+  // ---- Index Sync tick ----
+  const indexSyncTick = () => {
+    const snapshot = indexSource.generateSnapshot();
+    const regime = classifyIndexRegime(snapshot.indexVarianceBps);
+    const tvlSol = (snapshot.totalRestakedSol / 1e9).toFixed(0);
+
+    console.log(
+      `[INDEX]   ${"(Aggregated)".padEnd(20)} AvgAPY=${(snapshot.weightedAvgApyBps / 100).toFixed(2)}%  ncns=${snapshot.ncnCount}  tvl=${tvlSol} SOL  variance=${snapshot.indexVarianceBps}bps  regime=${REGIME_NAMES[regime]}`
+    );
+  };
+
   // ---- Uptime Sync tick (logs what would be sent on-chain) ----
   const uptimeSyncTick = () => {
     for (const config of ncnConfigs) {
@@ -169,16 +186,92 @@ function runPipeline(ncnConfigs: NcnConfig[]) {
     console.log("─".repeat(70));
   };
 
+  // ---- Mining Keeper ----
+  const miningTracker = new MockMiningTracker(100);
+
+  // Register mock LPs for each NCN
+  for (const config of ncnConfigs) {
+    miningTracker.registerLp(
+      `lp-${config.name.slice(0, 8)}`,
+      0, // Yield matcher type
+      1_000_000 // Liquidity
+    );
+  }
+
+  const miningTick = () => {
+    // Use average regime from NCN states
+    const regimes = [...ncnStates.values()].map((s) => s.yieldRegime);
+    const avgRegime = regimes.length > 0
+      ? Math.round(regimes.reduce((a, b) => a + b, 0) / regimes.length)
+      : 2;
+
+    miningTracker.recordParticipation(avgRegime);
+
+    const epochResult = miningTracker.finalizeEpoch();
+    if (epochResult) {
+      console.log(
+        `[MINING]  *** Epoch ${epochResult.epoch} finalized — total_weight=${Math.round(epochResult.totalWeight)} ***`
+      );
+    }
+
+    console.log(
+      `[MINING]  epoch=${miningTracker.getCurrentEpoch()} lps=${miningTracker.getLps().length} regime=${REGIME_NAMES[avgRegime]}`
+    );
+  };
+
+  // ---- Reporter Finalizer ----
+  const finalizer = new ReporterFinalizer(3);
+  const ncnAddresses = ncnConfigs.map((c) => c.ncnAddress.toBase58());
+  const mockReporters = ["reporter-A", "reporter-B", "reporter-C"];
+
+  const finalizerTick = () => {
+    const now = Math.floor(Date.now() / 1000);
+    for (const ncn of ncnAddresses) {
+      const state = ncnStates.get(ncn);
+      if (!state) continue;
+
+      // Simulate reporters submitting with slight variance
+      for (const reporter of mockReporters) {
+        const uptimeNoise = Math.round((Math.random() - 0.5) * 2000);
+        const apyNoise = Math.round((Math.random() - 0.5) * 20);
+        finalizer.submitReport(
+          ncn,
+          reporter,
+          state.uptimeE6 + uptimeNoise,
+          500_000_000_000_000,
+          1200,
+          state.yieldApyBps + apyNoise
+        );
+      }
+
+      const result = finalizer.tryFinalize(ncn);
+      if (result) {
+        const uptimePct = (result.finalizedUptimeE6 / 10_000).toFixed(2);
+        const apyPct = (result.finalizedApyBps / 100).toFixed(2);
+        console.log(
+          `[FINAL]   ${state.name.padEnd(20)} round=${result.round} uptime=${uptimePct}% APY=${apyPct}% (${result.submissions.length} reporters)`
+        );
+      }
+    }
+    finalizer.advanceRound();
+  };
+
   // ---- Schedule ----
   // Initial run
   monitorTick();
   yieldTick();
+  indexSyncTick();
+  miningTick();
+  finalizerTick();
   uptimeSyncTick();
 
   // Recurring
   setInterval(() => {
     monitorTick();
     yieldTick();
+    indexSyncTick();
+    miningTick();
+    finalizerTick();
     uptimeSyncTick();
   }, MONITOR_INTERVAL_MS);
 }
